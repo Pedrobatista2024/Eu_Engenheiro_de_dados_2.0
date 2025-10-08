@@ -1,0 +1,9 @@
+A partir de agora, daremos início ao PROJETO GUARDIÃO DE DADOS. Nosso foco será cobrir todos os 6 pilares da Engenharia de Dados que você mencionou, simulando a construção de um pipeline de ponta a ponta.
+
+O projeto será dividido em 10 atividades, distribuídas em três fases, garantindo que cada um dos 6 pilares seja abordado em complexidade crescente.
+
+PROJETO GUARDIÃO DE DADOS: O Pipeline de Notícias Financeiras
+Contexto: Nossa empresa precisa de um Data Warehouse simples com dados diários de notícias para que nosso time de Análise de Sentimento possa monitorar o humor do mercado. Você será responsável pela construção completa do pipeline de dados.
+
+Fase 1: Ingestão e Qualidade (Pilares 2, 4, 6)
+Foco em conectar-se à fonte, garantir a qualidade da coleta e transformar os dados brutos.
