@@ -45,11 +45,10 @@ try:
     response = requests.get(ENDPOINT, params=params)
     response.raise_for_status() 
     dados = response.json()
-    print(f'dados: {dados}')
 
  
     artigos = dados.get('data', []) 
-    print(f'artigos : {artigos}')
+
 except requests.exceptions.RequestException as e:
     print(f"Erro na requisição da API: {e}")
     artigos = []
@@ -63,26 +62,30 @@ if df_bruto.empty:
 else:
     total_antes = len(df_bruto)
     
-    df_limpo = df_bruto.dropna(subset=['title', 'content'])
+    df_limpo = df_bruto.dropna(subset=['title', 'description'])
     
     df_limpo = df_limpo[
-        ~( (df_limpo['title'].str.strip() == '') | (df_limpo['content'].str.strip() == '') )
+        ~( (df_limpo['title'].str.strip() == '') | (df_limpo['description'].str.strip() == '') )
     ]
     
     total_depois = len(df_limpo)
     artigos_removidos = total_antes - total_depois
 
-nome_arquivo = f"noticias_brutas_{datetime.now().strftime('%y%m%d')}.json"
+print(f'antes : {total_antes}')
+print(f'depois : {total_depois}')
+print(f'removidos : {artigos_removidos}')
 
-if not df_limpo.empty:
-    df_limpo.to_json(nome_arquivo, orient='records', indent=4)
-else:
-    with open(nome_arquivo, 'w') as f:
-        json.dump([], f)
-
-
-print("\n" + "="*40)
-print("RELATÓRIO DE ENTREGA")
-print(f"Arquivo JSON gerado: {nome_arquivo}")
-print(f"Total de Artigos Removidos: {artigos_removidos}")
-print("="*40)
+#nome_arquivo = f"noticias_brutas_{datetime.now().strftime('%y%m%d')}.json"
+#
+#if not df_limpo.empty:
+#    df_limpo.to_json(nome_arquivo, orient='records', indent=4)
+#else:
+#    with open(nome_arquivo, 'w') as f:
+#        json.dump([], f)
+#
+#
+#print("\n" + "="*40)
+#print("RELATÓRIO DE ENTREGA")
+#print(f"Arquivo JSON gerado: {nome_arquivo}")
+#print(f"Total de Artigos Removidos: {artigos_removidos}")
+#print("="*40)
