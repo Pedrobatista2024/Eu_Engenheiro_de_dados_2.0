@@ -25,6 +25,9 @@ import pandas as pd
 from datetime import datetime
 import json
 import os 
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_colwidth', None)
+
 
 
 API_KEY = 'ca1d64caa68fcda80c6ffd171bf2ceb9'  
@@ -33,11 +36,11 @@ ENDPOINT = 'http://api.mediastack.com/v1/news'
 
 
 params = {
-    'access_key': API_KEY,          
-    'keywords': QUERY,             
-    'language': 'pt',
-    'limit': 100,                   
-    'sort': 'published_desc'       
+    'access_key': API_KEY,
+    'keywords': QUERY,
+    'countries': 'br',
+    'limit': 100,
+    'sort': 'published_desc'
 }
 
 
@@ -75,17 +78,34 @@ print(f'antes : {total_antes}')
 print(f'depois : {total_depois}')
 print(f'removidos : {artigos_removidos}')
 
-#nome_arquivo = f"noticias_brutas_{datetime.now().strftime('%y%m%d')}.json"
+nome_arquivo = f"noticias_brutas_{datetime.now().strftime('%y%m%d')}.json"
+
+if not df_limpo.empty:
+    df_limpo.to_json(nome_arquivo, orient='records', indent=4)
+else:
+    with open(nome_arquivo, 'w') as f:
+        json.dump([], f)
+
+
+print("\n" + "="*40)
+print("RELATÓRIO DE ENTREGA")
+print(f"Arquivo JSON gerado: {nome_arquivo}")
+print(f"Total de Artigos Removidos: {artigos_removidos}")
+print("="*40)
+
+
+#caminho_arquivo = "noticias_brutas_251010.json"
 #
-#if not df_limpo.empty:
-#    df_limpo.to_json(nome_arquivo, orient='records', indent=4)
+#
+#if os.path.exists(caminho_arquivo):
+#    
+#    df_carregado = pd.read_json(caminho_arquivo, orient='records')
+#    
+#    print(f"Arquivo 'noticias_brutas_251010' carregado com sucesso.")
+#    print(f"Total de artigos carregados: {len(df_carregado)}")
+#    print("-" * 30)
+#    print(df_carregado.head())
+#    
 #else:
-#    with open(nome_arquivo, 'w') as f:
-#        json.dump([], f)
-#
-#
-#print("\n" + "="*40)
-#print("RELATÓRIO DE ENTREGA")
-#print(f"Arquivo JSON gerado: {nome_arquivo}")
-#print(f"Total de Artigos Removidos: {artigos_removidos}")
-#print("="*40)
+#    print(f"ERRO: O arquivo '{nome_arquivo}' não foi encontrado no diretório atual.")
+#    df_carregado = pd.DataFrame() 
