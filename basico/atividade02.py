@@ -26,7 +26,21 @@ import pandas as pd
 from datetime import datetime
 
 data_hoje = datetime.now().strftime('%y%m%d')
-nome_arquivo = f'noticias brutas_{data_hoje}.json'
+nome_arquivo = f'noticias_brutas_{data_hoje}.json'
 
 try:
-    df_artigos_brutos = pd.read_json(nome_arquivo, orient)
+    df_artigos_brutos = pd.read_json(nome_arquivo, orient='records')
+except FileNotFoundError:
+    print(f'erro: arquivo {nome_arquivo} não encontrado. execute a atividade01 primeiro.')
+    exit()
+
+df_artigos_brutos['nome_fonte'] = df_artigos_brutos['source']
+
+df_fontes_unicas = df_artigos_brutos['nome_fonte'].drop_duplicates().to_frame()
+
+df_fontes_unicas.reset_index(inplace=True)
+df_fontes_unicas.rename(columns={'index':'id_fonte', 'nome_fonte': 'nome_fonte'}, inplace=True)
+
+df_fontes_unicas['id_fonte'] = df_fontes_unicas['id_fonte']
+
+dim_fonte = df_fontes_unicas[['id_fonte', 'nome_fonte']]
