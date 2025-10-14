@@ -20,13 +20,8 @@
 import sys
 import os
 
-# Adiciona o diretório raiz do projeto ao caminho de busca do Python
-# Ele sobe um nível (..) a partir da pasta atual (intermediario)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-# -------------------------------------------------
 
-
-# Agora a sua importação deve funcionar
 from basico.atividade01 import task_extrair_dados_brutos
 
 dados = task_extrair_dados_brutos()
