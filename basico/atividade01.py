@@ -93,6 +93,10 @@ def task_extrair_dados_brutos():
     print(f"Total de Artigos Removidos: {artigos_removidos}")
     print("="*40)
 
+    dados_brutos = df_limpo
+
+    return dados_brutos
+
 
 #caminho_arquivo = "noticias_brutas_251010.json"
 #
@@ -109,4 +113,4 @@ def task_extrair_dados_brutos():
 #else:
 #    print(f"ERRO: O arquivo '{nome_arquivo}' não foi encontrado no diretório atual.")
 #    df_carregado = pd.DataFrame() 
-dados = task_extrair_dados_brutos()
+
