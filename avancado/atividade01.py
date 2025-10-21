@@ -1,3 +1,22 @@
+#Tarefa:
+#
+#Regra de Qualidade (Validando o URL): Crie uma função chamada validar_url(url) que verifica se uma string de URL é válida (por exemplo, se começa com http:// ou https://).
+#
+#Aplicação e Alerta:
+#
+#Modifique a sua função task_transformar_modelar para criar uma nova coluna booleana (True/False) chamada url_valida na tabela ft_artigos usando a função validar_url().
+#
+#Adicione um Alerta de Qualidade na main_pipeline(): Se a porcentagem de URLs inválidas (onde url_valida é False) for superior a 10% do total de artigos, o pipeline deve imprimir um alerta urgente, mas continuar rodando (o Data Warehouse deve aceitar a falha, mas nós precisamos de um alerta).
+#
+#Para a entrega, envie:
+#
+#O código da função validar_url(url).
+#
+#A modificação no task_transformar_modelar para criar a coluna url_valida.
+#
+#O trecho da main_pipeline() que realiza a checagem e imprime o alerta urgente (simulando um alerta no Airflow ou Datadog).
+
+
 # MÓDULOS ESSENCIAIS
 import requests
 import pandas as pd
@@ -19,6 +38,15 @@ NOME_DW = 'dw_noticias.db'
 # --- FIM: Definições e Variáveis Globais ---
 
 # --- FUNÇÕES AUXILIARES ---
+
+# NOVO: Função de Regra de Qualidade
+def validar_url(url):
+    """Verifica se uma URL começa com http:// ou https://."""
+    if isinstance(url, str):
+        return url.startswith('http://') or url.startswith('https://')
+    return False # Retorna False se o valor não for uma string (ex: NaN)
+
+
 def nome_arquivo_bruto():
     """Gera o nome do arquivo JSON com a data atual."""
     return f"noticias_brutas_{datetime.now().strftime('%y%m%d')}.json"
@@ -114,13 +142,17 @@ def task_transformar_modelar(df_bruto: pd.DataFrame):
     # 2. Criação da Tabela Fato (ft_artigos) e FK
     mapeamento_fonte_id = dim_fonte.set_index('nome_fonte')['id_fonte'].to_dict()
     df_artigos['id_fonte_fk'] = df_artigos['nome_fonte'].map(mapeamento_fonte_id)
+    
+    # NOVO: Aplica a função de validação para criar a coluna booleana
+    df_artigos['url_valida'] = df_artigos['url'].apply(validar_url)
 
     df_artigos.reset_index(inplace=True)
     df_artigos.rename(columns={'index': 'id_artigo'}, inplace=True)
 
+    # NOVO: Inclui 'url_valida' no DataFrame de Fato
     ft_artigos = df_artigos[[
-        'id_artigo', 'id_fonte_fk', 'published_at', 'title', 'url'
-    ]].copy() # Usando .copy() para evitar SettingWithCopyWarning
+        'id_artigo', 'id_fonte_fk', 'published_at', 'title', 'url', 'url_valida'
+    ]].copy() 
     
     ft_artigos.rename(columns={
         'published_at': 'data_publicacao',
@@ -131,9 +163,9 @@ def task_transformar_modelar(df_bruto: pd.DataFrame):
     return dim_fonte, ft_artigos
 
 # =========================================================
-# TAREFA 3 (ATIVIDADE 3) - CARREGAMENTO (COM UPSERT/APPEND CORRIGIDO)
+# TAREFA 3 (ATIVIDADE 3) - CARREGAMENTO
 # =========================================================
-
+ 
 def task_carregar_dw(dim_fonte: pd.DataFrame, ft_artigos: pd.DataFrame):
     print(f"TASK 3: Início do carregamento no Data Warehouse ({NOME_DW})...")
     conn = None
@@ -142,30 +174,21 @@ def task_carregar_dw(dim_fonte: pd.DataFrame, ft_artigos: pd.DataFrame):
         
         # --- LÓGICA DE TRATAMENTO DA DIMENSÃO (UPSERT SIMULADO) ---
         
-        # 1. Tenta ler as fontes que já existem no DW
         try:
             df_dim_existente = pd.read_sql_query("SELECT nome_fonte FROM dim_fonte", conn)
-            # Lista de fontes que JÁ ESTÃO no DW
             fontes_existentes = set(df_dim_existente['nome_fonte'])
             
-            # Filtra o DataFrame de entrada (dim_fonte) para pegar APENAS AS NOVAS FONTES
             df_novas_fontes = dim_fonte[~dim_fonte['nome_fonte'].isin(fontes_existentes)].copy()
 
             if df_novas_fontes.empty:
                 print("TASK 3: Dimensão: Nenhuma nova fonte encontrada. Carregamento incremental ignorado.")
             else:
-                # Ajusta os IDs das novas fontes para continuar a sequência do DW
-                # NOTA: O SQLite tem um ROWID automático, mas para este exercício, 
-                # mantemos a lógica de ID sequencial.
-                
-                # Carregamento da DIMENSÃO (APPEND) - Apenas as novas linhas
                 df_novas_fontes.to_sql(
                     'dim_fonte', conn, if_exists='append', index=False
                 )
                 print(f"TASK 3: Tabela dim_fonte carregada (APPEND). {len(df_novas_fontes)} novas fontes adicionadas.")
 
         except pd.io.sql.DatabaseError:
-            # Se a tabela dim_fonte não existir (primeira execução), carrega TUDO com REPLACE.
             dim_fonte.to_sql('dim_fonte', conn, if_exists='replace', index=False)
             print("TASK 3: Tabela dim_fonte criada pela primeira vez (REPLACE).")
 
@@ -205,9 +228,33 @@ def main_pipeline():
     # 2. TRANSFORMAR E MODELAR (Tarefa 2)
     dim_fonte, ft_artigos = task_transformar_modelar(df_bruto)
 
-    # 3. CARREGAR (Tarefa 3) - Agora com UPSERT funcional
+    # 3. CARREGAR (Tarefa 3)
     task_carregar_dw(dim_fonte, ft_artigos)
-
+    
+    # NOVO: ALERTA DE QUALIDADE DE URL
+    total_artigos = len(ft_artigos)
+    
+    # Conta quantos são inválidos (url_valida == False)
+    # .get(False, 0) garante que se não houver False, ele retorna 0.
+    artigos_invalidos = ft_artigos['url_valida'].value_counts().get(False, 0)
+    
+    # Calcula a porcentagem
+    if total_artigos > 0:
+        porcentagem_invalida = (artigos_invalidos / total_artigos) * 100
+    else:
+        porcentagem_invalida = 0
+    
+    LIMITE_ALERTA = 10
+    
+    if porcentagem_invalida > LIMITE_ALERTA:
+        print("\n!!!!!!!!!!!!!!! ALERTA URGENTE DE QUALIDADE DE DADOS !!!!!!!!!!!!!!!")
+        print(f"!!! FALHA CRÍTICA: {porcentagem_invalida:.2f}% dos artigos (Total: {artigos_invalidos})")
+        print("!!! possuem URLs INVÁLIDAS. A taxa excedeu o limite de 10%.")
+        print("!!! O pipeline continuou, mas a fonte deve ser verificada imediatamente.")
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
+    else:
+        print(f"\n[ALERTA QUALIDADE] URLs: {porcentagem_invalida:.2f}% de inválidas. Abaixo do limite ({LIMITE_ALERTA}%).")
+        
     # 4. SIMULAÇÃO DE UPLOAD PARA O DATA LAKE
     simular_upload_s3(nome_arquivo_bruto())
 
